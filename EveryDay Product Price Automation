@@ -1,0 +1,29 @@
+import pandas as pd
+import datetime as dt
+import requests
+import schedule
+import sched,time
+s=sched.scheduler(time.time,time.sleep)
+
+def examplessc():
+    url='https://www.1000bulbs.com/fil/smartfeed.csv'
+    f=requests.get(url)
+## data=pd.read_csv(url,sep=",",error_bad_lines=False,usecols=['Retail Price','Product Id'])
+    newf=f.text.splitlines()
+    today=dt.datetime.today().strftime('%m-%d-%Y')
+    df=pd.DataFrame([x.split("\t") for x in newf])
+    df.drop([0],axis=0)
+##df1=df.set_index("Product Id",drop=False)
+    df1=df.iloc[:,[4,12,16,9,25]]
+    df1.columns=['Product Price','Product ID','SKU','Product URL','Google Custom Label' ]
+##df1.drop(["Retail Price"],inplace=True)
+    df1.insert(3,"Date",today)
+    df1=df1[['Product ID','SKU','Product URL','Google Custom Label','Product Price','Date']]
+##df1.drop([0])
+    df2=(df1[1:])
+##excelfile=today +".xlsx"
+    export_excel=df2.to_excel(r'R:\Public\Daily Product Selling Price\'' + today+'.xlsx',index=None,header=True)
+    print(df2)
+    s.enter(86400,1, examplessc)
+examplessc()
+s.run()

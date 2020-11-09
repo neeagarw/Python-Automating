@@ -1,0 +1,47 @@
+import pyodbc
+import datetime
+import sched,time 
+import schedule
+import string
+import gspread
+s=sched.scheduler(time.time,time.sleep)
+from oauth2client.service_account import ServiceAccountCredentials
+scope= ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+creds=ServiceAccountCredentials.from_json_keyfile_name('Hourly_Sales.json',scope)
+
+def examplessc():
+    try:
+        client=gspread.authorize(creds)
+
+    except Exception as e:
+        print("Token Expired")
+        print(e)
+        print("Refresh and Continue")
+        if creds.access_token_expired:#Authorise the client after checking for token expiry
+            client.login()   
+            client=gspread.authorize(creds)
+    sheet=client.open('Sales Hourly').sheet1
+
+#sheet.insert_row(5,5)
+#Hourly=sheet.get_all_records()
+    conn=pyodbc.connect('Driver={SQL Server};'
+                    'Server=sle-sysprosql;'
+                     'Database=CompanyS;'
+                      'Trusted_Connection=yes;')
+    cursor=conn.cursor()
+    currentDT=datetime.datetime.now()
+    cursor.execute("Select CONVERT(INT,SUM(sd.[MOrderQty]*sd.[MPrice])) FROM CompanyS.dbo.SorDetail sd with (NOLOCK)  Join CompanyS.dbo.SorMaster sm with (NOLOCK) On sd.SalesOrder=sm.SalesOrder JOIN CompanyS.dbo.SalSalesperson ac with (NOLOCK) On ac.Salesperson=sm.Salesperson AND ac.Branch=sm.Branch WHERE sd.LineType=1 AND sd.MBomFlag NOT IN ('C') AND cast(sm.OrderDate as Date) = cast(getdate() as Date) AND (ac.Salesperson NOT IN ('627','537','527','027','166','429','348','182','431','432','427','236','214','415','351','413','421','423','350','416','173','200','422','430','432')) AND (ac.Branch IN ('00')) AND (sm.OrderStatus NOT IN('*','\'))")
+    i = 3
+    #Cursor=[x[0] for x in cursor.fetchall()]
+    for val in cursor:
+    
+        a=str(val[0])
+        sheet.update_cell(3,4,a)
+        time.sleep(30)
+        
+    
+ 
+    s.enter(300,1,examplessc)
+   
+examplessc()
+s.run()  

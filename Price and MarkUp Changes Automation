@@ -1,0 +1,89 @@
+import numpy as np
+import pandas as pd
+import datetime as dt
+import requests
+import schedule
+import sched,time
+s=sched.scheduler(time.time,time.sleep)
+import smtplib,ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
+
+def examplessc():
+    today=dt.datetime.today().strftime('%m-%d-%Y')
+    Yesterday=dt.date.fromordinal(dt.date.today().toordinal()-1).strftime("%m-%d-%Y")
+    today_file=today + '.xlsx'
+    df_OLD=pd.read_excel("R:\Public\Daily\\"+"'" + today+'ProductsData'+'.xlsx')
+    df_NEW=pd.read_excel("R:\Public\Daily\\"+"'" + Yesterday+'ProductsData'+'.xlsx')
+#print(df_OLD)
+#print(df_NEW)
+    outer_join_df=df_OLD.merge(df_NEW,how="inner",on="Product ID")
+#print(outer_join_df)
+    df1=outer_join_df[['Product ID','SKU_x','Product URL_x','Google Custom Label_x','Mark Up_y','Mark Up_x','Product Price_y','Product Price_x']]
+#print(df1)
+    df1.columns=['Product_ID','SKU_x','Product URL_x','Google Custom Label_x','Yesterday_Mark_Up','Today_Mark_Up','Yesterday_Price','Today_Price' ]
+#print(df1)
+    df1=df1[df1.Yesterday_Price !='New']
+    df1=df1[df1.Today_Price !='New']
+#df1=df1[df1.Yesterday_Mark_Up !='New']
+#print(df1)
+#df1=df1[df1.Today_Mark_Up !='New']
+#df1=df1[df1.Today_Price !='New']
+    df1=df1[df1.Product_ID !=""]
+    print(df1)
+#export_excel1=df1.to_excel(r'R:\Public\Daily\'' + today+' MarkUpDierenc'+'.xlsx',index=None,header=True)
+    MarkUpDifference=pd.to_numeric(df1['Today_Mark_Up'])-pd.to_numeric(df1['Yesterday_Mark_Up'])
+    PriceDifference=pd.to_numeric(df1['Today_Price'])-pd.to_numeric(df1['Yesterday_Price'])
+#print(PriceDifference)
+    df1['Product_ID'].replace('',np.nan,inplace=True)
+    df1.dropna(subset=['Product_ID'],inplace=True)
+#export_excel=df1.to_excel(r'R:\Public\Daily\'' + today+' MarkUpD'+'.xlsx',index=None,header=True)
+    df1['SKU_x'].replace('',np.nan,inplace=True)
+    df1.dropna(subset=['SKU_x'],inplace=True)
+    df1=df1.drop_duplicates()
+#print(PriceDifference)
+    df1.insert(8,"MarkUpDifference",MarkUpDifference)
+    df1.insert(9,"PriceDifference",PriceDifference)
+    df1=df1[df1.PriceDifference !=0]
+    #print(df1)
+    df1.dropna(axis=0,how='any',thresh=None,subset=None,inplace=False)
+    df1.columns=['Product ID','SKU','Product URL','Google Custom Label','Yesterday_Mark_Up','Today_Mark_Up','Yesterday Price','Today Price','Mark Up Difference','PriceDifference']
+    df1=df1.drop_duplicates()
+#print(df1)
+    export_excel=df1.to_excel(r'R:\Public\Daily\'' + today+' MarkUp&PriceDifference'+'.xlsx',index=None,header=True)
+    port=465
+    smtp_server= "smtp.gmail.com"
+    sender_email="nagarwala1000bulbs@gmail.com"
+    #receiver_email=["nagarwala@1000bulbs.com","dsaucedo@1000bulbs.com","rdaniel@1000bulbs.com","erenfrow@1000bulbs.com","jgise@1000bulbs.com","asimpson@1000bulbs.com","lbarringer@1000bulbs.com"]
+    receiver_email=["nagarwala@1000bulbs.com"]
+    password ="********"
+    subject= "Price Difference And MarkUp from Yesterday"
+
+    msg=MIMEMultipart()
+    msg['From']=sender_email
+    msg['To']=",".join(receiver_email)
+    msg['Subject']=subject
+
+    body= 'Hi , Please find the attached excel sheet.If any changes is required then let me know I will fix it'
+    msg.attach(MIMEText(body,'plain'))
+
+    filename="R:\Public\Daily\\"+"'" + today+' MarkUp&PriceDifference'+'.xlsx'
+    attachment=open(filename,'rb')
+    part=MIMEBase('application','octet-stream')
+    part.set_payload((attachment).read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition',"attachment;filename= " +filename)
+
+    msg.attach(part)
+    text=msg.as_string()
+
+    context=ssl.create_default_context()
+    with smtplib.SMTP_SSL(smtp_server,port,context=context) as server:
+        server.login(sender_email,password)
+        server.sendmail(sender_email,receiver_email,text)
+        server.quit()
+        s.enter(86400,1, examplessc)
+examplessc()
+s.run() 

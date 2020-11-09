@@ -1,0 +1,45 @@
+import numpy as np
+import pandas as pd
+import datetime as dt
+import requests
+import schedule
+import sched,time
+s=sched.scheduler(time.time,time.sleep)
+import smtplib,ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
+today=dt.datetime.today().strftime('%m-%d-%Y')
+Yesterday=dt.date.fromordinal(dt.date.today().toordinal()-1).strftime("%m-%d-%Y")
+today_file=today + '.xlsx'
+df_OLD=pd.read_excel("R:\Public\Daily Product Selling Price\\"+"'" + today+'.xlsx')
+df_NEW=pd.read_excel("R:\Public\Daily Product Selling Price\\"+"'" + Yesterday+'.xlsx')
+print(df_OLD)
+print(df_NEW)
+outer_join_df=df_OLD.merge(df_NEW,how="outer",on="Product ID")
+print(outer_join_df)
+df1=outer_join_df[['Product ID','SKU_x','Product URL_x','Google Custom Label_x','Product Price_y','Product Price_x']]
+df1.columns=['Product_ID','SKU_x','Product URL_x','Google Custom Label_x','Today_Price','Yesterday_Price' ]
+df1=df1[df1.Yesterday_Price !='New']
+#df1=df1[df1.Yesterday_Price ==' ']
+#df1=df1[df1.Today_Price != "New"]
+df1=df1[df1.Product_ID !=""]
+#PriceDifference=pd.to_numeric(df1['Today_Price'])-pd.to_numeric(df1['Yesterday_Price'])
+#df1['Product_ID'].replace('',np.nan,inplace=True)
+#df1.dropna(subset=['Product_ID'],inplace=True)
+#df1['SKU_y'].replace('',np.nan,inplace=True)
+#df1.dropna(subset=['SKU_y'],inplace=True)
+    #print(PriceDifference)
+#df1.insert(6,"PriceDifference",PriceDifference)
+#df1=df1[df1.PriceDifference !=0]
+df1.dropna(axis=0,how='any',thresh=None,subset=None,inplace=False)
+df1.columns=['Product ID','SKU','Product URL','Google Custom Label','Today_Price','Yesterday_Price']
+df1=df1.drop_duplicates()
+df1=df1.replace(r'^\s*$''', np.nan, regex=True)
+df1=df1.fillna(1)
+df1=df1[df1.Today_Price ==1]
+df1=df1[df1.Yesterday_Price !=1]
+df1=df1[df1.SKU !=1]
+print(df1)
+export_excel=df1.to_excel(r'R:\Public\Daily Product Selling Price\'' + today+' Dropped'+'.xlsx',index=None,header=True)
